@@ -1,9 +1,9 @@
+import 'package:malacas_advmobprog/models/article_model.dart';
+import 'package:malacas_advmobprog/services/article_service.dart';
+import 'package:malacas_advmobprog/widgets/custom_text.dart';
+import 'package:malacas_advmobprog/screens/article_details_screen.dart'; 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
-import '../models/article_model.dart';
-import '../services/article_service.dart';
-import '../widgets/custom_text.dart';
 
 class ArticleScreen extends StatefulWidget {
   const ArticleScreen({super.key});
@@ -14,17 +14,40 @@ class ArticleScreen extends StatefulWidget {
 
 class _ArticleScreenState extends State<ArticleScreen> {
   late Future<List<Article>> _futureArticles;
+  List<Article> _allArticles = [];
+  List<Article> _filteredArticles = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _futureArticles = _getAllArticles();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<List<Article>> _getAllArticles() async {
     final response = await ArticleService().getAllArticle();
-    return (response).map((e) => Article.fromJson(e)).toList();
+    final articles = (response).map((e) => Article.fromJson(e)).toList();
+    _allArticles = articles;
+    _filteredArticles = articles;
+    return articles;
+  }
 
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredArticles = _allArticles
+          .where((article) =>
+              article.title.toLowerCase().contains(query) ||
+              article.body.toLowerCase().contains(query))
+          .toList();
+    });
   }
 
   @override
@@ -33,6 +56,21 @@ class _ArticleScreenState extends State<ArticleScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
+            child: TextField(
+              controller: _searchController,
+              style: TextStyle(fontSize: 14.sp),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: "Search articles...",
+                hintStyle: TextStyle(fontSize: 14.sp, color: Colors.grey),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.r),
+                ),
+              ),
+            ),
+          ),
           Expanded(
             child: FutureBuilder<List<Article>>(
               future: _futureArticles,
@@ -48,7 +86,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
                     ),
                   );
                 }
-
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
                     child: Column(
@@ -57,7 +94,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
                         CircularProgressIndicator.adaptive(strokeWidth: 3.sp),
                         SizedBox(height: 10.h),
                         CustomText(
-                          text: 'Loading articles.',
+                          text: 'Loading articles...',
                           fontSize: 14.sp,
                         ),
                       ],
@@ -65,13 +102,12 @@ class _ArticleScreenState extends State<ArticleScreen> {
                   );
                 }
 
-                final articles = snapshot.data ?? [];
-                if (articles.isEmpty) {
+                if (_filteredArticles.isEmpty) {
                   return Center(
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 24.w),
                       child: CustomText(
-                        text: 'No articles to display.',
+                        text: 'No matching articles.',
                         fontSize: 14.sp,
                       ),
                     ),
@@ -80,10 +116,10 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
                 return ListView.separated(
                   padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                  itemCount: articles.length,
+                  itemCount: _filteredArticles.length,
                   separatorBuilder: (_, __) => SizedBox(height: 8.h),
                   itemBuilder: (context, index) {
-                    final article = articles[index];
+                    final article = _filteredArticles[index];
                     return Card(
                       elevation: 1,
                       shape: RoundedRectangleBorder(
@@ -92,8 +128,12 @@ class _ArticleScreenState extends State<ArticleScreen> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12.r),
                         onTap: () {
-                          // TODO: navigate to details
-                          debugPrint('Index $index tapped');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ArticleDetailsScreen(article: article),
+                            ),
+                          );
                         },
                         child: Padding(
                           padding: EdgeInsets.symmetric(
@@ -103,18 +143,15 @@ class _ArticleScreenState extends State<ArticleScreen> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Thumbnail placeholder
                               Placeholder(
                                 fallbackHeight: 100.h,
                                 fallbackWidth: 100.w,
                               ),
                               SizedBox(width: 10.w),
-                              // Article text
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Title
                                     CustomText(
                                       text: article.title,
                                       fontSize: 20.sp,
@@ -123,7 +160,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     SizedBox(height: 6.h),
-                                    // Body preview
                                     CustomText(
                                       text: article.body,
                                       fontSize: 13.sp,

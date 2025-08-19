@@ -1,10 +1,8 @@
+import 'package:malacas_advmobprog/screens/article_screen.dart';
+import 'package:malacas_advmobprog/screens/settings_screen.dart';
+import 'package:malacas_advmobprog/widgets/custom_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:provider/provider.dart';
-
-import '../providers/theme_provider.dart';
-import '../widgets/custom_text.dart';
-import 'article_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String username;
@@ -18,17 +16,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
-  void _onTappedBar(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    _pageController.jumpToPage(index);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final themeModel = context.watch<ThemeProvider>();
-
     return Scaffold(
       appBar: AppBar(
         elevation: 2,
@@ -38,36 +27,49 @@ class _HomeScreenState extends State<HomeScreen> {
           fontWeight: FontWeight.w600,
         ),
         actions: [
-          Switch(
-            value: themeModel.isDark,
-            onChanged: (_) => themeModel.toggleTheme(),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
           ),
         ],
       ),
       body: PageView(
         controller: _pageController,
-        onPageChanged: (page) {
-          setState(() {
-            _selectedIndex = page;
-          });
-        },
         children: const <Widget>[
           ArticleScreen(),
           Placeholder(),
           Placeholder(),
         ],
+        onPageChanged: (page) {
+          setState(() {
+            _selectedIndex = page;
+          });
+        },
       ),
       bottomNavigationBar: BottomNavigationBar(
         showSelectedLabels: false,
         showUnselectedLabels: false,
-        currentIndex: _selectedIndex,
         onTap: _onTappedBar,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifications'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: 'Notification'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
+        currentIndex: _selectedIndex,
       ),
     );
+  }
+
+  void _onTappedBar(int value) {
+    setState(() {
+      _selectedIndex = value;
+    });
+    _pageController.jumpToPage(value);
   }
 }
