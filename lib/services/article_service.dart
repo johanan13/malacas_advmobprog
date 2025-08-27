@@ -1,23 +1,71 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
+import 'package:malacas_advmobprog/constants.dart';
+
 
 class ArticleService {
   List listData = [];
 
   Future<List> getAllArticle() async {
-    final response = await http.get(
-    Uri.parse('https://jsonplaceholder.typicode.com/posts'),
+    try {
+      final response = await get(
+        Uri.parse('$host/api/articles'),
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Dart/3.0 (Flutter)'
+        },
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decodedData = jsonDecode(response.body);
+        listData = decodedData['articles'];
+
+        print('List data: $listData');
+        return listData;
+      } else {
+        print('Response: ${response.body}');
+        throw Exception('Failed to load data');
+      }
+    } catch (error) {
+      print('Error: $error');
+      throw error;
+    }
+  }
+
+
+  Future<Map> createArticle(dynamic article) async {
+    final response = await post(
+      Uri.parse('$host/api/articles'),
       headers: {
+        'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'User-Agent': 'Dart/3.0 (Flutter)'
       },
+      body: jsonEncode(article),
     );
 
-    if (response.statusCode == 200) {
-      listData = jsonDecode(response.body);
-      return listData;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      Map mapData =jsonDecode(response.body);
+      return mapData;
     } else {
-      throw Exception('Failed to load data');
+      throw Exception('Failed to create article: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  Future<Map> updateArticle(String id, dynamic article) async {
+    final response = await put(
+      Uri.parse('$host/api/articles/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(article),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      Map mapData =jsonDecode(response.body);
+      print('YAAAAYYYYY');
+      return mapData;
+    } else {
+      throw Exception('Failed to update article: ${response.statusCode} ${response.body}');
     }
   }
 }

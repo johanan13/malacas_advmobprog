@@ -1,91 +1,355 @@
+import 'package:flutter/material.dart';
 import 'package:malacas_advmobprog/models/article_model.dart';
 import 'package:malacas_advmobprog/widgets/custom_text.dart';
-import 'package:flutter/material.dart';
+import 'package:malacas_advmobprog/services/article_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class ArticleDetailsScreen extends StatelessWidget {
+class ArticleDetailsScreen extends StatefulWidget {
   final Article article;
-
   const ArticleDetailsScreen({super.key, required this.article});
+  
+  @override
+  State<ArticleDetailsScreen> createState() => _ArticleDetailsScreenState();
+}
+
+
+class _ArticleDetailsScreenState extends State<ArticleDetailsScreen> {
+  final formKey = GlobalKey<FormState>();
+  bool isSaving = false;
+  bool isActive = true;  
+  bool isEditing = false;
+
+  late TextEditingController titleController;
+  late TextEditingController authorController;
+  late TextEditingController contentController;
+
+  @override
+  void initState() {
+    super.initState();
+    titleController = TextEditingController(text: widget.article.title);
+    authorController = TextEditingController(text: widget.article.name);
+    contentController = TextEditingController(
+      text: widget.article.content.join("\n"),
+    );
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    authorController.dispose();
+    contentController.dispose();
+    super.dispose();
+  }
+
+  Widget _statusChip(bool active) {
+    return Chip(
+      label: Text(active ? 'Active' : 'Inactive'),
+      visualDensity: VisualDensity.compact,
+      side: BorderSide(color: active ? Colors.green : Colors.grey),
+    );
+  }
+
+  void showLoadingDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 16),
+                Flexible(
+                  child: Text(
+                    message,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 241, 223, 245),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            SizedBox(height: 20.h),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 20.h),
-              child: SizedBox(
-                height: 250.h,
-                width: double.infinity,
-                child: Placeholder(
-                  fallbackHeight: 250.h,
-                  fallbackWidth: double.infinity,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20.r),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
-              ),
-              onPressed: () {},
-              child: CustomText(
-                text: 'Read All',
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 30.h),
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30.r),
-                  topRight: Radius.circular(30.r),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomText(
-                    text: article.title,
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  SizedBox(height: 12.h),
-                  CustomText(
-                    text: article.body,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ],
-              ),
-            ),
-          ],
+        title: CustomText(
+          text: widget.article.title.isEmpty
+            ? 'Untitled'
+            : widget.article.title,
+          fontSize: 24.sp,
+          fontWeight: FontWeight.bold,
+          maxLines: 2,
         ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(isEditing ? Icons.cancel : Icons.edit),
+            onPressed: () {
+              setState(() {   
+                isEditing = !isEditing;// view/edit
+              });
+            },
+          ),
+        ],
       ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: isEditing ? _buildEditForm() : _buildDetailView(),
+      ),
+    );
+  }
+
+  Widget _buildDetailView () {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Placeholder(
+            fallbackHeight: 200.h,
+            fallbackWidth: double.infinity,
+          ),
+          SizedBox(height: 20.h,),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: CustomText(
+                              text: widget.article.title.isEmpty
+                                ? 'Untitled'
+                                : widget.article.title,
+                              fontSize: 24.sp,
+                              fontWeight: FontWeight.bold,
+                              maxLines: 2,
+                            ),
+                          ),
+                          _statusChip(widget.article.isActive),
+                        ],
+                      ),
+                      SizedBox(height: 4.h,),
+                      CustomText(
+                        text: widget.article.name,
+                        fontSize: 20.sp,
+                        //fontWeight: FontWeight.w600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      if (widget.article.content.isNotEmpty) ...[
+                        SizedBox(height: 6.h),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: widget.article.content.map((item) {
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: 4.h), // spacing between bullets
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "• ",
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                  Expanded(
+                                    child: CustomText(
+                                      text: item,
+                                      fontSize: 14.sp,
+                                      maxLines: 2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ]
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditForm () {
+    return StatefulBuilder(
+      builder: (ctx, setLocalState) {
+        List<String> _toList(String raw) {
+          return raw
+          .split(RegExp(r'[\n,]'))
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+        }
+
+    Future<void> save() async {
+      if (isSaving) return;
+      if (!formKey.currentState!.validate()) return;
+      showLoadingDialog(context, 'Updating article...');
+
+      setLocalState(() {
+        isSaving = true;
+      } );
+      try {
+        final payLoad = {
+          'title': titleController.text.trim(),
+          'name': authorController.text.trim(),
+          'content': _toList(contentController.text.trim()),
+          'isActive': isActive,
+        };
+
+        final Map res = await ArticleService().updateArticle(widget.article.aid, payLoad);
+
+        // Adjust depending on your API's response shape
+        final created = (res['article'] ?? res);
+        final newArticle = Article.fromJson(created);
+
+        // setState(() {
+        //   _allArticles.insert(0, newArticle);
+        //   _filteredArticles; // keep current query applied
+        // });
+
+        if (ctx.mounted) Navigator.of(ctx).pop();
+        if(mounted) {
+          Navigator.of(context).pop(); // hide dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Article updated.')),
+          );
+        }
+      } catch (e) {
+        setLocalState(() => isSaving = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to update: $e')),
+            );
+          }
+        }
+      } //
+        return Column(
+          children: [ 
+            Placeholder(
+                fallbackHeight: 200.h,
+                fallbackWidth: double.infinity,
+              ),
+            SizedBox(height: 20.h,),
+            Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: titleController,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                    SizedBox(height: 12.h,),
+                    TextFormField(
+                      controller: authorController,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Author / Name',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                    SizedBox(height: 12.h,),
+                    TextFormField(
+                      controller: contentController,
+                      minLines: 3,
+                      maxLines: 6,
+                      decoration: const InputDecoration(
+                        labelText: 'Content (one item per line or comma-separated)',
+                        border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
+                      ),
+                      validator: (v) {
+                        final items = v == null
+                          ? []
+                          : v 
+                              .trim()
+                              .split(RegExp(r'[\n,]'))
+                              .where((s) => s.trim().isNotEmpty)
+                              .toList();
+                          return items.isEmpty
+                            ? 'At least one content item'
+                            : null;
+                      }
+                    ),
+                    SizedBox(height: 8.h,),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Active'),
+                      value: isActive,
+                      onChanged: (val) => setLocalState(() => isActive = val),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(
+              width: double.infinity, // take full width
+              child: ElevatedButton.icon(
+                icon: Icon(Icons.save), 
+                onPressed: () {
+                  save();
+                }, 
+                label: Text('Save'),
+                style: ButtonStyle(),
+              ),
+            ),
+            SizedBox(
+              width: double.infinity, // take full width
+              child: ElevatedButton.icon(
+              icon: Icon(Icons.cancel), 
+                onPressed: () {
+                  setState(() {
+                    // toggle view/edit
+                    isEditing = !isEditing;
+                  });
+                }, 
+                label: Text('Cancel'),
+                style: ButtonStyle(),
+              ),
+            ),
+            Text('Tip: Separate multiple content items using new lines or commas.')
+          ]
+        );
+      },
     );
   }
 }
