@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class ArticleDialog extends StatefulWidget {
+class ArticleFormDialog extends StatefulWidget {
   final String title;
   final String? initialTitle;
   final String? initialAuthor;
@@ -8,7 +8,7 @@ class ArticleDialog extends StatefulWidget {
   final bool initialActive;
   final Future<Map> Function(Map<String, dynamic>) onSubmit;
 
-  const ArticleDialog({
+  const ArticleFormDialog({
     super.key,
     required this.title,
     this.initialTitle,
@@ -19,10 +19,10 @@ class ArticleDialog extends StatefulWidget {
   });
 
   @override
-  State<ArticleDialog> createState() => _ArticleDialogState();
+  State<ArticleFormDialog> createState() => _ArticleFormDialogState();
 }
 
-class _ArticleDialogState extends State<ArticleDialog> {
+class _ArticleFormDialogState extends State<ArticleFormDialog> {
   final formKey = GlobalKey<FormState>();
   late TextEditingController titleController;
   late TextEditingController authorController;
